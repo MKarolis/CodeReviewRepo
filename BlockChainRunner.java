@@ -12,14 +12,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -97,7 +90,8 @@ public class BlockChainRunner {
 
             threadSyncSemaphore.acquire(miners.length);
             blockQueue.clear();
-            startMiningNextBlock(blockChain.get(blockChain.size() - 1).getHash(), REGULAR_BLOCK_DIFFICULTY, miners);
+            Block nextBlock = blockChain.get(blockChain.size() - 1);
+            startMiningNextBlock(nextBlock.getHash(), REGULAR_BLOCK_DIFFICULTY, miners);
 
             Pair<Block, Integer> minedValue = blockQueue.take();
             threadSyncSemaphore.acquire(miners.length);
@@ -151,7 +145,8 @@ public class BlockChainRunner {
         Miner genesisMiner = new Miner("Genesis miner", transactionPool, 0, genesisQueue, new Semaphore(10));
         startMinerThreads(genesisMiner);
         startMiningNextBlock(BLOCK_ZERO_HASH, GENESIS_BLOCK_DIFFICULTY, genesisMiner);
-        Block genesisBlock = genesisQueue.take().getKey();
+        Pair<Block, Integer> genesisBlockIndexPair = genesisQueue.take();
+        Block genesisBlock = genesisBlockIndexPair.getKey();
         genesisMiner.stopExecution();
 
         addBlockToBlockChain(genesisBlock);
@@ -261,7 +256,12 @@ public class BlockChainRunner {
             // Validate transaction here ↓
             int transactionInputValue = 0;
 
-            if (!pendingTransaction.getTxId().equals(pendingTransaction.computeTransactionId())) {
+            boolean isTransactionHashValid = Objects.equals(
+                    pendingTransaction.getTxId(),
+                    pendingTransaction.computeTransactionId()
+            );
+
+            if (!isTransactionHashValid) {
                 log(String.format(
                     "INFO: Invalid transaction %s: invalid transaction hash", pendingTransaction.getTxId()
                 ));

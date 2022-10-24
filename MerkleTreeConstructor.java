@@ -9,6 +9,7 @@ import org.bitcoinj.core.Utils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 public class MerkleTreeConstructor {
@@ -27,7 +28,7 @@ public class MerkleTreeConstructor {
 
     public String getMerkleTreeRootFromIds(@NonNull List<String> transactionHashes) {
         List<Sha256Hash> reversedHashes = transactionHashes.stream()
-            .map(hash -> Sha256Hash.wrapReversed(Utils.HEX.decode(hash.toLowerCase())))
+            .map(hash -> Sha256Hash.wrapReversed(Utils.HEX.decode(hash.toLowerCase(Locale.ENGLISH))))
             .collect(Collectors.toList());
         return Utils.HEX.encode(computeMerkleTreeRoot(reversedHashes).getReversedBytes());
     }
@@ -42,31 +43,24 @@ public class MerkleTreeConstructor {
         }
 
 
-        // While there is more than 1 hash in the list, keep looping...
         while (merkle.size() > 1) {
-            // If number of hashes is odd, duplicate last hash in the list.
             if (merkle.size() % 2 != 0) {
                 merkle.add(merkle.get(merkle.size() - 1));
             }
             assert merkle.size() % 2 == 0;
 
-            // New hash list.
             List<Sha256Hash> newMerkle = new ArrayList<>();
-            // Loop through hashes 2 at a time.
+
             for (ListIterator<Sha256Hash> it = merkle.listIterator(); it.hasNext();) {
                 byte[] concatData = new byte[Sha256Hash.LENGTH * 2];
                 System.arraycopy(it.next().getBytes(), 0, concatData, 0, Sha256Hash.LENGTH);
                 System.arraycopy(it.next().getBytes(), 0, concatData, Sha256Hash.LENGTH, Sha256Hash.LENGTH);
 
-                // Hash both of the hashes.
                 Sha256Hash newRoot = Sha256Hash.wrap(Sha256Hash.hashTwice(concatData));
-                // Add this to the new list.
                 newMerkle.add(newRoot);
             }
-            // This is the new list.
             merkle = newMerkle;
         }
-        // Finally we end up with a single item.
         return merkle.get(0);
     }
 
